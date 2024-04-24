@@ -5,12 +5,13 @@ const app = express()
 
 app.use(express.json())
 app.use(cors())
+app.use(express.static('dist'))
 
 morgan.token('data', (req, res) => {
     return JSON.stringify(req.body)
 })
 
-app.use(morgan(':method :url :status : res[content-length] - :response-time ms :data'))
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :data'))
 
 let phonebook = [
     {
@@ -46,7 +47,7 @@ app.get('/api/persons/', (request, response) => {
 app.get('/info/', (request, response) => {
     const today = new Date()
     return response.send(
-        `<p>Phonebook has info for 2 people</p><p>${today}</p>`
+        `<p>Phonebook has info for ${phonebook.length} people</p><p>${today}</p>`
     )
 })
 
@@ -89,6 +90,12 @@ app.post('/api/persons/', (request, response) => {
         response.json(entry)
     }
 })
+
+const unknownEndpoint = (request, response) => {
+    response.status(404).send({ error: 'unknown endpoint' })
+}
+
+app.use(unknownEndpoint)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
