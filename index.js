@@ -3,7 +3,6 @@ const express = require('express')
 const morgan = require('morgan')
 const app = express()
 const Person = require('./models/person')
-
 app.use(express.static('dist'))
 app.use(express.json())
 
@@ -17,7 +16,7 @@ app.get('/info/', (request, response) => {
     const today = new Date()
     Person.collection.countDocuments({}, (err, count) => {
         if (err) {
-            return response.status(500).send({ error: 'An error occurred while fetching the data'})
+            return response.status(500).send({ error: 'An error occurred while fetching the data' })
         }
         response.send(`<p>Phonebook has info for ${count} people</p><p>${today}</p>`)
     })
@@ -25,9 +24,9 @@ app.get('/info/', (request, response) => {
 
 app.get('/api/persons/', (request, response) => {
     Person.find({}).then(people => {
-      response.json(people)
+        response.json(people)
     })
-  })
+})
 
 app.get('/api/persons/:id', (request, response, next) => {
     Person.findById(request.params.id)
@@ -49,34 +48,30 @@ app.delete('/api/persons/:id', (request, response) => {
         .catch(error => next(error))
 })
 
-app.post('/api/persons/', (request, response) => {
+app.post('/api/persons/', (request, response, next) => {
     const contact = request.body
 
-    if (!(contact.name) || !(contact.number)) {
-        return response.status(400).json({
-            error: 'must have name and number'
-        })
-    } else {
-        const entry = new Person({
-            name: contact.name,
-            number: contact.number
-        })
+    const entry = new Person({
+        name: contact.name,
+        number: contact.number
+    })
 
-        entry.save().then(savedEntry => {
+    entry.save()
+        .then(savedEntry => {
             response.json(savedEntry)
         })
-    }
+        .catch(error => next(error))
 })
 
-app.put('/api/persons/:id', (request, response) => {
+app.put('/api/persons/:id', (request, response, next) => {
     const contact = request.body
 
     const person = {
         name: contact.name,
         number: contact.number
     }
-    
-    Person.findByIdAndUpdate(request.params.id, person, {new: true})
+
+    Person.findByIdAndUpdate(request.params.id, person, { new: true, runValidators: true, context: 'query' })
         .then(updatedPerson => {
             response.json(updatedPerson)
         })
@@ -92,7 +87,9 @@ app.use(unknownEndpoint)
 const errorHandler = (error, request, response, next) => {
     console.error(error.message)
     if (error.name === 'CastError') {
-        return response.status(400).send({error: 'malformatted id'})
+        return response.status(400).send({ error: 'malformatted id' })
+    } else if (error.name === 'ValidationError') {
+        return response.status(400).json({ error: error.message })
     }
     next(error)
 }
